@@ -1,0 +1,32 @@
+{
+  "name": "AjudaAí — Plataforma de ajuda de Angola",
+  "short_name": "AjudaAí",
+  "description": "Faz perguntas, responde e partilha conhecimento com angolanos. Comunidades por província e tópico.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#c1272d",
+  "orientation": "portrait-primary",
+  "lang": "pt-AO",
+  "categories": ["social", "education", "news"],
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova publicação",
+      "short_name": "Publicar",
+      "url": "/?composer=1"
+    },
+    {
+      "name": "Top angolanos",
+      "short_name": "Leaderboard",
+      "url": "/?leaderboard=1"
+    }
+  ]
+}

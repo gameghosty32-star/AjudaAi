@@ -1,0 +1,243 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  email         String   @unique
+  passwordHash  String
+  displayName   String?
+  bio           String?
+  avatarColor   String   @default("amber")
+  location      String? // Angolan province
+  karma         Int      @default(0)
+  role          String   @default("member") // member | moderator | admin
+  preferences   String?  // JSON string of user preferences
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  posts          Post[]
+  comments       Comment[]
+  votes          Vote[]
+  memberships    Membership[]
+  notifications  Notification[]
+  badges         UserBadge[]
+  sessions       Session[]
+  communities    Community[] @relation("CommunityModerator")
+  savedPosts     SavedPost[]
+  following      Follow[] @relation("FollowFollower")
+  followers      Follow[] @relation("Followee")
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  followerId String
+  followeeId String
+  createdAt  DateTime @default(now())
+
+  follower User @relation("FollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  followee User @relation("Followee", fields: [followeeId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followeeId])
+  @@index([followeeId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Community {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  icon        String   @default("message-circle")
+  color       String   @default("rose")
+  category    String   @default("Geral") // Provincia | Topico
+  members     Int      @default(0)
+  rules       String?  // newline-separated community rules
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  posts       Post[]
+  memberships Membership[]
+  moderators  User[]   @relation("CommunityModerator")
+}
+
+model Membership {
+  id           String   @id @default(cuid())
+  userId       String
+  communityId  String
+  role         String   @default("member") // member | moderator
+  createdAt    DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, communityId])
+  @@index([communityId])
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  type        String   @default("question") // question | discussion | link
+  title       String
+  body        String?
+  link        String?
+  image       String?
+  communityId String
+  authorId    String
+  upvotes     Int      @default(0)
+  downvotes   Int      @default(0)
+  score       Int      @default(0)
+  views       Int      @default(0)
+  answerCount Int      @default(0)
+  hotScore    Float    @default(0)
+  edited      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  votes     Vote[]
+  tags      PostTag[]
+  savedBy   SavedPost[]
+
+  @@index([communityId, createdAt])
+  @@index([hotScore])
+  @@index([score])
+}
+
+model SavedPost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  body        String
+  image       String?
+  postId      String
+  authorId    String
+  parentId    String?
+  upvotes     Int      @default(0)
+  downvotes   Int      @default(0)
+  score       Int      @default(0)
+  isAnswer    Boolean  @default(false)
+  edited      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  post    Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  Comment? @relation("CommentReply", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  replies Comment[] @relation("CommentReply")
+  votes   Vote[]
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String?
+  commentId String?
+  value     Int // 1 or -1
+  createdAt DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@index([postId])
+  @@index([commentId])
+}
+
+model Tag {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  posts   PostTag[]
+}
+
+model PostTag {
+  id      String @id @default(cuid())
+  postId  String
+  tagId   String
+  post    Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag     Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // reply | vote | answer | mention | welcome
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model Badge {
+  id      String   @id @default(cuid())
+  key     String   @unique
+  name    String
+  description String
+  icon    String
+  color   String
+  users   UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  awardedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
